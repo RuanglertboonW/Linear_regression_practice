@@ -50,10 +50,130 @@ Teams %>% filter(yearID %in% 1961:2001) %>%
 # Thus, it might appear that a base on the balls is causing runs, in fact, it is HR that cause both runs and bases
 # This is called "confounding"
 
-test
 
 
-ABC 
+# Use the filtered Teams data frame from Question 6. Make a scatterplot of win rate (number of wins per game) versus number of fielding errors (E) per game.
+Teams %>% filter(yearID %in% 1961:2001 ) %>%
+  mutate(win_rate = W/G, E_per_game = E/G) %>%
+  ggplot(aes(win_rate, E_per_game)) + 
+  geom_point(alpha = 0.5)
+
+# Use the filtered Teams data frame from Question 6. Make a scatterplot of triples (X3B) per game versus doubles (X2B) per game.
+# Which of the following is true?
+Teams %>% filter(yearID %in% 1961:2001 ) %>%
+  mutate(doubles = X2B, triples = X3B) %>%
+  ggplot(aes(doubles, triples)) + 
+  geom_point(alpha = 0.5)
+
+##### Correlation ########
+# create the dataset
+library(tidyverse)
+library(HistData)
+data("GaltonFamilies")
+set.seed(1983)
+galton_heights <- GaltonFamilies %>%
+  filter(gender == "male") %>%
+  group_by(family) %>%
+  sample_n(1) %>%
+  ungroup() %>%
+  select(father, childHeight) %>%
+  rename(son = childHeight)
+
+# means and standard deviations
+galton_heights %>%
+  summarize(mean(father), sd(father), mean(son), sd(son))
+
+# `mean(father)` `sd(father)` `mean(son)` `sd(son)`
+#       69.1         2.55        69.2      2.71
+
+# scatterplot of father and son heights
+galton_heights %>%
+  ggplot(aes(father, son)) +
+  geom_point(alpha = 0.5) # the trend that the taller the father, the taller the son is not described by the summary of the average and sd
+
+######## Correlation coefficient #######
+# rho = mean(scale(x)*scale(y))
+galton_heights  %>% summarise(r = cor(father, son)) %>% pull(r)
+# correlation coefficient is 0.433 >> less association
+
+# Sample correlation is a random variable
+
+# The correlation that we compute and use as a summary is a random variable.
+# When interpreting correlations, it is important to remember that correlations derived from samples are estimates containing uncertainty.
+# Because the sample correlation is an average of independent draws, the central limit theorem applies. 
+
+# compute sample correlation
+R = sample_n(galton_heights, 25, replace = TRUE) %>%  # only sample from 25 sample size (N = 25), quite small
+  summarise(r = cor(father, son))
+R
+
+# use Monte Carlo simulation to show distribution of sample correlation
+B = 1000
+N = 25
+R = replicate(B, {
+  sample_n(galton_heights, N, replace = TRUE) %>% 
+    summarise(r = cor(father, son)) %>% 
+    pull(r)
+}) 
+
+# expected value and standard error
+mean(R) # 0.429
+sd(R) # 0.160
+
+# illustrate in Q-Q plot to evaluate whether N is large enough or not
+data.frame(R) %>% 
+  ggplot(aes(sample = R)) +
+  stat_qq() +
+  geom_abline(intercept = mean(R), slope = sqrt((1-mean(R)^2)/(N/2)))
+
+Teams %>% filter(yearID %in% 1961:2001 ) %>%
+  mutate(AB_per_game = AB/G, R_per_game = R/G) %>%
+  summarize(corr_coeff = cor(AB_per_game, R_per_game))
+
+Teams %>% filter(yearID %in% 1961:2001 ) %>%
+  mutate(dub_per_game = X2B/G, trip_per_game = X3B/G) %>%
+  summarize(corr_coeff = cor(dub_per_game, trip_per_game))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
