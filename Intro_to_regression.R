@@ -50,6 +50,7 @@ Teams %>% filter(yearID %in% 1961:2001) %>%
 # Thus, it might appear that a base on the balls is causing runs, in fact, it is HR that cause both runs and bases
 # This is called "confounding"
 
+<<<<<<< HEAD
 
 
 # Use the filtered Teams data frame from Question 6. Make a scatterplot of win rate (number of wins per game) versus number of fielding errors (E) per game.
@@ -183,3 +184,5 @@ Teams %>% filter(yearID %in% 1961:2001 ) %>%
 
 
 
+=======
+>>>>>>> 6263eb2761819729028407f7b94b8ca23e9e2a52
