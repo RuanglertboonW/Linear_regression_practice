@@ -178,3 +178,99 @@ galton_heights %>%
   geom_point() +
   geom_abline(intercept = b, slope = m)
 
+########## Bivariate normal distribution ##########
+# The regular normal distribution has one random variable
+# a bivariate normal distribution is made up of two independent random variables
+# The two variables in a bivaiate normal distribution are both normally distributed, and they have a normal distribution when both are added together
+
+galton_heights %>% 
+  mutate(z_father = round((father - mean(father)) / sd(father))) %>% 
+  filter(z_father %in% -2:2) %>% 
+  ggplot() +
+  stat_qq(aes(sample = son)) +
+  facet_wrap( ~ father)
+
+#### Variance explained ########
+# The variance is the standard deviation squared.
+# The “variance explained” statement only makes sense when the data is approximated by a bivariate normal distribution.
+
+###### Regression lines #####
+# There are two different regression lines depending on what we are interested (Y or X)
+# previously we predicted height of son based on father (Y given X)
+# if we would like to predict fathers' height based on sons' height, another regression line is needed (X given Y)
+
+# compute a regression line to predict the son's height from the father's height
+mu_x <- mean(galton_heights$father)
+mu_y <- mean(galton_heights$son)
+s_x <- sd(galton_heights$father)
+s_y <- sd(galton_heights$son)
+r <- cor(galton_heights$father, galton_heights$son)
+m_1 <-  r * s_y / s_x
+b_1 <- mu_y - m_1*mu_x
+
+# compute a regression line to predict the father's height from the son's height
+m_2 <-  r * s_x / s_y
+b_2 <- mu_x - m_2*mu_y
+
+# In the second part of this assessment, you'll analyze a set of mother and daughter heights, also from GaltonFamilies.
+
+# Define female_heights, a set of mother and daughter heights sampled from GaltonFamilies, as follows:
+
+set.seed(1989, sample.kind="Rounding") #if you are using R 3.6 or later
+library(HistData)
+data("GaltonFamilies")
+
+female_heights <- GaltonFamilies%>%     
+  filter(gender == "female") %>%     
+  group_by(family) %>%     
+  sample_n(1) %>%     
+  ungroup() %>%     
+  select(mother, childHeight) %>%     
+  rename(daughter = childHeight)
+
+mu_mom <- mean(female_heights$mother)
+mu_mom
+
+sd_mom = sd(female_heights$mother)
+sd_mom
+
+mu_daughter = mean(female_heights$daughter)
+mu_daughter
+
+sd_daughter = sd(female_heights$daughter)
+sd_daughter
+
+correlation = cor(female_heights$mother, female_heights$daughter)
+correlation
+
+# Calculate the slope and intercept of the regression line predicting
+#  daughters' heights given mothers' heights. Given an increase in mother's
+#  height by 1 inch, how many inches is the daughter's height expected to change?
+
+
+# Slope of regression line predicting daughters' height from mothers' heights
+m <- correlation*sd_daughter/sd_mom  
+m
+# Intercept of regression line predicting daughters' height from mothers' heights
+b <- mu_daughter - m*mu_mom
+b
+# Change in daughter's height in inches given a 1 inch increase in the mother's height
+(m*2+b) - (m*1+b) # essentially the slope
+
+# percent variablity in daughter due to mother
+correlation*correlation*100
+
+# The conditional expected value of her daughter's height given the mother's height (60)
+x = 60
+m*x+b
+
+
+
+
+
+
+
+
+
+
+
