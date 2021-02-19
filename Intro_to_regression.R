@@ -228,7 +228,7 @@ female_heights <- GaltonFamilies%>%
   select(mother, childHeight) %>%     
   rename(daughter = childHeight)
 
-mu_mom <- mean(female_heights$mother)
+mu_mom <- mean(female_heights$mother) # Mother's avg height 
 mu_mom
 
 sd_mom = sd(female_heights$mother)
@@ -263,6 +263,200 @@ correlation*correlation*100
 # The conditional expected value of her daughter's height given the mother's height (60)
 x = 60
 m*x+b
+
+##############################
+####### Linear models ########
+##############################
+
+### Confounding ##########
+# it may appear that BB cause runs, it is actually the HR that cause most of the runs.
+# Thus, BB are confounded with HR
+
+# Previously, we noted a strong relationship between Runs and BB. If we find the regression line for predicting runs from bases on balls, we a get slope of:
+
+library(tidyverse)
+library(Lahman)
+get_slope <- function(x, y) cor(x, y) * sd(y) / sd(x)
+
+bb_slope <- Teams %>% 
+  filter(yearID %in% 1961:2001 ) %>% 
+  mutate(BB_per_game = BB/G, R_per_game = R/G) %>% 
+  summarize(slope = get_slope(BB_per_game, R_per_game))
+
+bb_slope 
+#>   slope
+#> 1 0.735
+
+## So does this mean that if we go and hire low salary players with many BB, and who therefore increase the number of walks per game by 2, our team will score 1.5 more runs per game?
+# We are again reminded that association is not causation. The data does provide strong evidence that a team with two more BB per game than the average team, scores 1.5 runs per game. But this does not mean that BB are the cause.
+# Note that if we compute the regression line slope for singles we get:
+
+singles_slope <- Teams %>% 
+  filter(yearID %in% 1961:2001 ) %>%
+  mutate(Singles_per_game = (H-HR-X2B-X3B)/G, R_per_game = R/G) %>%
+  summarize(slope = get_slope(Singles_per_game, R_per_game))
+singles_slope # slope = 0.4494 which is lower than what we obtained for BB
+
+# Also, notice that a single gets you to first base just like a BB. Those that know about baseball will tell you that with a single, runners on base have a better chance of scoring than with a BB. So how can BB be more predictive of runs? The reason this happen is because of confounding. Here we show the correlation between HR, BB, and singles:
+#  
+
+Teams %>% 
+  filter(yearID %in% 1961:2001 ) %>% 
+  mutate(Singles = (H-HR-X2B-X3B)/G, BB = BB/G, HR = HR/G) %>%  
+  summarize(cor(BB, HR), cor(Singles, HR), cor(BB, Singles))
+#>   cor(BB, HR) cor(Singles, HR) cor(BB, Singles)
+#       0.403         -0.173              -0.0560
+
+# It turns out that pitchers, afraid of HRs, will sometimes avoid throwing strikes to HR hitters. As a result, HR hitters tend to have more BBs and a team with many HRs will also have more BBs. Although it may appear that BBs cause runs, it is actually the HRs that cause most of these runs. We say that BBs are confounded with HRs. Nonetheless, could it be that BBs still help? To find out, we somehow have to adjust for the HR effect. Regression can help with this as well.
+
+# Stratification and Multivariate Regression
+# stratify HR per game to nearest 10, filter out strata with few points
+dat = Teams %>% 
+  filter(yearID %in% 1961:2001) %>% 
+  mutate(HR_strata = round(HR/G, 1),
+         BB_per_game = BB/G,
+         R_per_game = R/G) %>% 
+  filter(HR_strata >= 0.4 & HR_strata <= 1.2)
+dat
+# scatterplot for each HR stratum
+dat %>% ggplot(aes(BB_per_game, R_per_game)) + 
+  geom_point(alpha =0.5) +
+  geom_smooth(method = "lm") +
+  facet_wrap( ~ HR_strata)
+
+# calculate slope of regression line after stratifying by HR
+dat %>% 
+  group_by(HR_strata) %>% 
+  summarise(slope = cor(BB_per_game, R_per_game)* sd(R_per_game)/ sd(BB_per_game))
+
+###### stratify by BB
+dat = Teams %>% 
+  filter(yearID %in% 1961:2001) %>% 
+  mutate(BB_strata = round(BB/G, 1),
+         HR_per_game = HR/G,
+         R_per_game = R/G) %>% 
+  filter(BB_strata >= 2.8 & BB_strata <= 3.9)
+### scatter plot for BB stratum
+dat %>% ggplot(aes(HR_per_game, R_per_game)) +
+  geom_point(alpha = 0.5)+
+  geom_smooth(method = 'lm') +
+  facet_wrap(~BB_strata)
+# slope of regression line after stratifying by BB
+dat %>%  
+  group_by(BB_strata) %>%
+  summarize(slope = cor(HR_per_game, R_per_game)*sd(R_per_game)/sd(HR_per_game)) 
+
+###### lm function ######
+# when calling the lm() function, the variable that we want to predict is put to the left of the ~ symbol, and the variables that we use to predict is put to the right of the ~ symbol. The intercept is added automatically
+
+# fit regression line to predict son's height from father's height
+fit <- lm(son ~ father, data = galton_heights) #the variable need to be predicted is on the left. Predicting based on the variable on the right
+fit
+
+# summary statistics
+summary(fit)
+
+
+
+
+set.seed(1989, sample.kind="Rounding") #if you are using R 3.6 or later
+library(HistData)
+data("GaltonFamilies")
+options(digits = 3)    # report 3 significant digits
+
+female_heights <- GaltonFamilies %>%     
+  filter(gender == "female") %>%     
+  group_by(family) %>%     
+  sample_n(1) %>%     
+  ungroup() %>%     
+  select(mother, childHeight) %>%     
+  rename(daughter = childHeight)
+
+fit = lm(female_heights$mother ~ female_heights$daughter)
+fit
+
+fit = lm(female_heights$mother ~ female_heights$daughter[1])
+fit
+
+
+library(Lahman)
+bat_02 <- Batting %>% filter(yearID == 2002) %>%
+  mutate(pa = AB + BB, singles = (H - X2B - X3B - HR)/pa, bb = BB/pa) %>%
+  filter(pa >= 100) %>%
+  select(playerID, singles, bb)
+
+bat_03 <- Batting %>% filter(yearID %in% 1999:2001) %>% 
+  mutate(pa = AB + BB, singles = (H - X2B - X3B - HR)/pa, bb = BB/pa) %>% 
+  filter(pa >= 100) %>% 
+  select(playerID, singles, bb)
+
+player_groups <- bat_03 %>% group_by(playerID) %>% mutate(mean_singles = mean(singles), mean_bb = mean(bb)) 
+
+player_groups %>% filter(mean_singles > 0.2 ) %>% nrow()
+
+
+
+library(tidyverse)
+library(broom)
+library(Lahman)
+Teams_small <- Teams %>% 
+  filter(yearID %in% 1961:2001) %>% 
+  mutate(avg_attendance = attendance/G)
+
+
+###################### QUESTION 1 a/b/c #####################
+# Use runs (R) per game to predict average attendance.
+# For every 1 run scored per game, attendance increases by how much?
+Teams_small %>% mutate(rpg = R/G) %>%
+  lm(avg_attendance ~ rpg, data = .)
+
+Teams_small %>% mutate(hrpg = HR/G) %>%
+  lm(avg_attendance ~ hrpg, data = .)
+
+
+#Use number of wins to predict attendance; do not normalize for number of games.
+# For every game won in a season, how much does average attendance increase?
+Teams_small %>% lm(avg_attendance ~ W, data = .) # slope
+
+# Suppose a team won zero games in a season.
+# Predict the average attendance.
+Teams_small %>% lm(avg_attendance ~ W = 0, data = .) # intercept
+
+
+# Use year to predict average attendance.
+# How much does average attendance increase each year?
+Teams_small %>% lm(avg_attendance ~ yearID, data = .)
+
+
+###################### QUESTION 2 a #####################
+# Game wins, runs per game and home runs per game are positively correlated with attendance.
+#  We saw in the course material that runs per game and home runs per game are correlated
+#  with each other. Are wins and runs per game or wins and home runs per game correlated?
+
+# What is the correlation coefficient for wins and runs per game?
+corr <- Teams_small %>% mutate(rpg = R/G)
+cor(x = corr$W, y = corr$rpg)
+
+# What is the correlation coefficient for wins and home runs per game?
+corr <- Teams_small %>% mutate(hrpg = HR/G)
+cor(x = corr$W, y = corr$hrpg)
+
+
+###################### QUESTION 3 a/b/c #####################
+# Stratify Teams_small by wins: divide number of wins by 10 and then round to the nearest
+#  integer. Keep only strata 5 through 10, which have 20 or more data points.
+strat_teams <- Teams_small %>%
+  mutate(strat = round(W/10)) %>%
+  group_by(strat) %>%
+  filter(strat %in% 5:10)
+
+# How many observations are in the 8 win strata?
+strat_teams %>% filter(strat == 8) %>% count()
+
+
+strat_teams %>% filter(strat == 6) %>%
+  mutate(hrpg = HR/G) %>%
+  lm(avg_attendance ~ hrpg, data = .)
 
 
 
