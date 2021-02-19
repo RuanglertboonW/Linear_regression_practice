@@ -50,16 +50,3 @@ Teams %>% filter(yearID %in% 1961:2001) %>%
 # Thus, it might appear that a base on the balls is causing runs, in fact, it is HR that cause both runs and bases
 # This is called "confounding"
 
-test
-
-
-ABC 
-
-
-
-
-
-
-
-
-
