@@ -50,8 +50,6 @@ Teams %>% filter(yearID %in% 1961:2001) %>%
 # Thus, it might appear that a base on the balls is causing runs, in fact, it is HR that cause both runs and bases
 # This is called "confounding"
 
-<<<<<<< HEAD
-
 
 # Use the filtered Teams data frame from Question 6. Make a scatterplot of win rate (number of wins per game) versus number of fielding errors (E) per game.
 Teams %>% filter(yearID %in% 1961:2001 ) %>%
@@ -131,58 +129,52 @@ Teams %>% filter(yearID %in% 1961:2001 ) %>%
   mutate(AB_per_game = AB/G, R_per_game = R/G) %>%
   summarize(corr_coeff = cor(AB_per_game, R_per_game))
 
+# correlation between double and triple
 Teams %>% filter(yearID %in% 1961:2001 ) %>%
   mutate(dub_per_game = X2B/G, trip_per_game = X3B/G) %>%
   summarize(corr_coeff = cor(dub_per_game, trip_per_game))
 
+#### Stratification ######
+# Due to correlation is not a definite summary of relationship between variables
+# The general idea of conditional expectation is that we stratify a population into groups and compute summaries in each group.
 
+# Number of father with height 72 or 72.5
+sum(galton_heights$father == 72)
+sum(galton_heights$father == 72.5)
 
+# predicted height of a son with a 72 inch tall father
+conditional_avg = galton_heights %>% 
+  filter(round(father) == 72) %>% 
+  summarise(avg = mean(son)) %>% 
+  pull(avg)
+conditional_avg
 
+# stratify fathers' heights to make a boxplot of son heights
+galton_heights %>%  mutate(father_strata = factor(round(father))) %>% 
+  ggplot(aes(father_strata, son)) +
+  geom_boxplot() + 
+  geom_point()
 
+# center of each boxplot
+galton_heights %>% 
+  mutate(father = round(father)) %>% 
+  group_by(father) %>% 
+  summarise(son_conditional_avg = mean(son)) %>% 
+  ggplot(aes(father, son_conditional_avg)) +
+  geom_point()
 
+# calculate values to plot regression line on original data
+mu_x <- mean(galton_heights$father)
+mu_y <- mean(galton_heights$son)
+s_x <- sd(galton_heights$father)
+s_y <- sd(galton_heights$son)
+r <- cor(galton_heights$father, galton_heights$son)
+m <- r * s_y/s_x
+b <- mu_y - m*mu_x
 
+# add regression line to the plot
+galton_heights %>% 
+  ggplot(aes(father,son)) +
+  geom_point() +
+  geom_abline(intercept = b, slope = m)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-=======
->>>>>>> 6263eb2761819729028407f7b94b8ca23e9e2a52
