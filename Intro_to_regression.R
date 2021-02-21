@@ -391,6 +391,82 @@ lse %>% summarize(se_0 = sd(beta_0), se_1 = sd(beta_1))
 # t statistics is the coefficient divided by the standard error
 
 
+# predicted values are random variables 
+# once the model is fitted, it can predict Y by plugging in the estimates into the regression model
+# Thus, if N is large enough, central limit theorem can be applied
+### Tips ###
+# ggplot2 layer geom_smooth(method = "lm") would plot a confidence interval surround the predicted value
+
+galton_heights %>% ggplot(aes(son, father)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+## the predict() takes an lm object as input and returns the prediction
+# we can extract standard error and CI too
+fit = galton_heights %>% lm(son ~ father, data = .)
+y_hat = predict(fit, se.fit = TRUE)
+
+# plot best fit line
+galton_heights %>%
+  mutate(Y_hat = predict(lm(son ~ father, data=.))) %>%
+  ggplot(aes(father, Y_hat))+
+  geom_line()
+
+########## Tibbles ##############
+# tibbles are more readable than data frames
+# subsetting data frames may not results in data frames whereas, subsetting tibble results in tibbles
+# tibble can hold more complex objects such as lists or functions
+# tibbles can be grouped
+
+# inspect data frame and tibble
+Teams
+as_tibble(Teams)
+# Note that the function was formerly called as.tibble()
+
+# subsetting a data frame sometimes generates vectors
+class(Teams[,20])
+
+# subsetting a tibble always generates tibbles
+class(as_tibble(Teams[,20]))
+
+# pulling a vector out of a tibble
+class(as_tibble(Teams)$HR)
+
+# access a non-existing column in a data frame or a tibble
+Teams$hr
+as_tibble(Teams)$HR
+
+# create a tibble with complex objects
+tibble(id = c(1, 2, 3), func = c(mean, median, sd))
+
+### make a better model #######
+library(broom)
+#linear regression with two variables
+fit = Teams %>% 
+  filter(yearID %in% 1961:2001) %>% 
+  mutate(BB = BB/G, HR = HR/G, R = R/G) %>% 
+  lm(R ~ BB + HR, data =.)
+tidy(fit, conf.int = TRUE)
+
+
+# regression with BB, singles, doubles, triples, HR
+fit <- Teams %>% 
+  filter(yearID %in% 1961:2001) %>% 
+  mutate(BB = BB / G, 
+         singles = (H - X2B - X3B - HR) / G, 
+         doubles = X2B / G, 
+         triples = X3B / G, 
+         HR = HR / G,
+         R = R / G) %>%  
+  lm(R ~ BB + singles + doubles + triples + HR, data = .)
+coefs <- tidy(fit, conf.int = TRUE)
+coefs
+
+
+
+
+
+
 
 
 
