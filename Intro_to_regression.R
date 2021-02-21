@@ -329,7 +329,7 @@ dat %>%
   group_by(HR_strata) %>% 
   summarise(slope = cor(BB_per_game, R_per_game)* sd(R_per_game)/ sd(BB_per_game))
 
-###### stratify by BB
+###### stratify by BB ############
 dat = Teams %>% 
   filter(yearID %in% 1961:2001) %>% 
   mutate(BB_strata = round(BB/G, 1),
@@ -356,107 +356,40 @@ fit
 # summary statistics
 summary(fit)
 
+# The LSE is derived from the data y1, y2,...yn, which are a realisation of random variables Y1, Y2,...Yn.
+# this imply that our estimates are random variables
+# to see this, we can run a Monte Carlo simulation in which we assume the son and father height data defines population, take a random sample of size N = 50, and compute the regression slope, coefficient for each one
 
+B= 1000
+N= 50
+lse = replicate(B, {
+  sample_n(galton_heights, N, replace = TRUE) %>% 
+    lm(son ~ father, data = .) %>% 
+    .$coef
+})
 
+lse = data.frame(beta_0 = lse[1,], beta_1 = lse[2,])
 
-set.seed(1989, sample.kind="Rounding") #if you are using R 3.6 or later
-library(HistData)
-data("GaltonFamilies")
-options(digits = 3)    # report 3 significant digits
+# Plot the distribution of beta_0 and beta_1
+library(gridExtra)
+p1 <- lse %>% ggplot(aes(beta_0)) + geom_histogram(binwidth = 5, color = "black") 
+p2 <- lse %>% ggplot(aes(beta_1)) + geom_histogram(binwidth = 0.1, color = "black") 
+grid.arrange(p1, p2, ncol = 2)
 
-female_heights <- GaltonFamilies %>%     
-  filter(gender == "female") %>%     
-  group_by(family) %>%     
-  sample_n(1) %>%     
-  ungroup() %>%     
-  select(mother, childHeight) %>%     
-  rename(daughter = childHeight)
+# the plots result in normal distribution shape. this is because the central limit theorem apply (if larger enough N) 
+# using lm() and summary() function, standard error can be extracted :
+sample_n(galton_heights, N, replace = TRUE) %>% 
+  lm(son ~ father, data = .) %>% 
+  summary %>% .$coeff
 
-fit = lm(female_heights$mother ~ female_heights$daughter)
-fit
+#               Estimate Std. Error  t value     Pr(>|t|)
+# (Intercept) 54.3959374 12.1392979 4.480979 4.600915e-05
+# father       0.2154042  0.1751277 1.229983 2.246978e-01
 
-fit = lm(female_heights$mother ~ female_heights$daughter[1])
-fit
+lse %>% summarize(se_0 = sd(beta_0), se_1 = sd(beta_1))
+# it can be seen that the standard error estimates reported by the summary are close to the sd from the simulation
+# t statistics is the coefficient divided by the standard error
 
-
-library(Lahman)
-bat_02 <- Batting %>% filter(yearID == 2002) %>%
-  mutate(pa = AB + BB, singles = (H - X2B - X3B - HR)/pa, bb = BB/pa) %>%
-  filter(pa >= 100) %>%
-  select(playerID, singles, bb)
-
-bat_03 <- Batting %>% filter(yearID %in% 1999:2001) %>% 
-  mutate(pa = AB + BB, singles = (H - X2B - X3B - HR)/pa, bb = BB/pa) %>% 
-  filter(pa >= 100) %>% 
-  select(playerID, singles, bb)
-
-player_groups <- bat_03 %>% group_by(playerID) %>% mutate(mean_singles = mean(singles), mean_bb = mean(bb)) 
-
-player_groups %>% filter(mean_singles > 0.2 ) %>% nrow()
-
-
-
-library(tidyverse)
-library(broom)
-library(Lahman)
-Teams_small <- Teams %>% 
-  filter(yearID %in% 1961:2001) %>% 
-  mutate(avg_attendance = attendance/G)
-
-
-###################### QUESTION 1 a/b/c #####################
-# Use runs (R) per game to predict average attendance.
-# For every 1 run scored per game, attendance increases by how much?
-Teams_small %>% mutate(rpg = R/G) %>%
-  lm(avg_attendance ~ rpg, data = .)
-
-Teams_small %>% mutate(hrpg = HR/G) %>%
-  lm(avg_attendance ~ hrpg, data = .)
-
-
-#Use number of wins to predict attendance; do not normalize for number of games.
-# For every game won in a season, how much does average attendance increase?
-Teams_small %>% lm(avg_attendance ~ W, data = .) # slope
-
-# Suppose a team won zero games in a season.
-# Predict the average attendance.
-Teams_small %>% lm(avg_attendance ~ W = 0, data = .) # intercept
-
-
-# Use year to predict average attendance.
-# How much does average attendance increase each year?
-Teams_small %>% lm(avg_attendance ~ yearID, data = .)
-
-
-###################### QUESTION 2 a #####################
-# Game wins, runs per game and home runs per game are positively correlated with attendance.
-#  We saw in the course material that runs per game and home runs per game are correlated
-#  with each other. Are wins and runs per game or wins and home runs per game correlated?
-
-# What is the correlation coefficient for wins and runs per game?
-corr <- Teams_small %>% mutate(rpg = R/G)
-cor(x = corr$W, y = corr$rpg)
-
-# What is the correlation coefficient for wins and home runs per game?
-corr <- Teams_small %>% mutate(hrpg = HR/G)
-cor(x = corr$W, y = corr$hrpg)
-
-
-###################### QUESTION 3 a/b/c #####################
-# Stratify Teams_small by wins: divide number of wins by 10 and then round to the nearest
-#  integer. Keep only strata 5 through 10, which have 20 or more data points.
-strat_teams <- Teams_small %>%
-  mutate(strat = round(W/10)) %>%
-  group_by(strat) %>%
-  filter(strat %in% 5:10)
-
-# How many observations are in the 8 win strata?
-strat_teams %>% filter(strat == 8) %>% count()
-
-
-strat_teams %>% filter(strat == 6) %>%
-  mutate(hrpg = HR/G) %>%
-  lm(avg_attendance ~ hrpg, data = .)
 
 
 
